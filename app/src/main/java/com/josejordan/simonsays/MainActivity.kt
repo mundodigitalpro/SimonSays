@@ -26,61 +26,59 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-// Esta función comprueba si la primera lista es un prefijo de la segunda
-fun startsWith(prefix: List<Int>, list: List<Int>): Boolean {
-    if (prefix.size > list.size) return false
-    return prefix.indices.all { index -> prefix[index] == list[index] }
-}
 
 @Composable
 fun SimonSaysGame() {
     var sequence by remember { mutableStateOf(listOf<Int>()) }
     var currentInput by remember { mutableStateOf(listOf<Int>()) }
-    var gameActive by remember { mutableStateOf(false) }
     var gameStarted by remember { mutableStateOf(false) }
-    var showSequence by remember { mutableStateOf(false) }
-    var userTurn by remember { mutableStateOf(false) }
+    var activeColor by remember { mutableStateOf(-1) }
     var gameMessage by remember { mutableStateOf("Press 'Start' to play Simon Says!") }
+    var sequenceKey by remember { mutableStateOf(0) } // Agregado para forzar la recomposición
 
-    LaunchedEffect(gameActive) {
-        if (gameActive) {
-            sequence += listOf((0..3).random())
-            currentInput = listOf()
-            showSequence = true
-            var index = 0
+    val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow)
+
+// Este efecto se reinicia cada vez que 'sequenceKey' cambia y 'gameStarted' es true
+    LaunchedEffect(sequenceKey, gameStarted) {
+        if (gameStarted) {
+            sequence += (0..3).random()
+            activeColor = -1
+            gameMessage = "Watch the sequence!"
             delay(1000L)
-            while (index < sequence.size) {
-                currentInput = sequence.take(index + 1)
-                gameMessage = "Watch the sequence!"
-                delay(600L)
-                currentInput = listOf()
-                delay(400L)
-                index++
+
+            sequence.forEach { colorIndex ->
+                activeColor = colorIndex
+                delay(600L) // Show color for a while
+                activeColor = -1
+                delay(400L) // Pause between colors
             }
-            showSequence = false
-            userTurn = true
+
             gameMessage = "Your turn!"
+            delay(500L) // Short pause before the user's turn begins
         }
     }
 
-    LaunchedEffect(currentInput) {
-        if (userTurn && currentInput.isNotEmpty()) {
-            if (!startsWith(currentInput, sequence)) {
-                gameMessage = "Wrong sequence! Try again."
-                sequence = listOf()
-                gameActive = false
-                gameStarted = false
-                userTurn = false
-                delay(2000L)
-                gameMessage = "Press 'Start' to play Simon Says!"
-            } else if (sequence.size == currentInput.size) {
-                userTurn = false
+// Este efecto verifica la entrada del usuario
+    LaunchedEffect(currentInput.size, sequence) {
+        if (currentInput.isNotEmpty() && currentInput.size == sequence.size) {
+            if (currentInput == sequence) {
                 gameMessage = "Correct! Keep going."
+                delay(2000L) // Wait before starting the next sequence
+                currentInput = listOf()
+                sequenceKey++ // Incrementar la clave para forzar la recomposición y reiniciar la secuencia
+            } else {
+                gameMessage = "Wrong sequence! Try again."
                 delay(2000L)
-                gameActive = true
+                gameStarted = false
+                sequence = listOf()
+                currentInput = listOf()
+                sequenceKey++ // También reiniciar cuando el usuario se equivoca
+                gameMessage = "Press 'Start' to play Simon Says!"
             }
         }
     }
+
+
 
     Column(
         modifier = Modifier
@@ -94,33 +92,29 @@ fun SimonSaysGame() {
         Spacer(modifier = Modifier.height(16.dp))
 
         if (!gameStarted) {
-            Button(onClick = {
-                gameStarted = true
-                gameActive = true
-            }) {
+            Button(onClick = { gameStarted = true }) {
                 Text(text = "Start")
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow)
         Row {
             colors.forEachIndexed { index, color ->
-                val isCurrent = currentInput.contains(index)
+                val isCurrent = index == activeColor
                 Button(
                     onClick = {
-                        if (userTurn && !showSequence) {
+                        if (gameStarted && activeColor == -1 && currentInput.size < sequence.size) {
                             currentInput += index
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = if (isCurrent && showSequence) color else color.copy(alpha = 0.3f)),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isCurrent) color else color.copy(alpha = 0.3f)),
                     modifier = Modifier
                         .weight(1f)
                         .padding(8.dp)
                         .height(100.dp)
                 ) {
-                    Spacer(modifier = Modifier.background(if (isCurrent && showSequence) color else color.copy(alpha = 0.3f)))
+                    Spacer(modifier = Modifier.background(if (isCurrent) color else color.copy(alpha = 0.3f)))
                 }
             }
         }
