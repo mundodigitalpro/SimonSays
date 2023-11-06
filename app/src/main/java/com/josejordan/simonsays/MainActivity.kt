@@ -35,8 +35,9 @@ fun SimonSaysGame() {
     var activeColor by remember { mutableStateOf(-1) }
     var gameMessage by remember { mutableStateOf("Press 'Start' to play Simon Says!") }
     var sequenceKey by remember { mutableStateOf(0) } // Agregado para forzar la recomposición
-
     val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow)
+    var score by remember { mutableStateOf(0) } // Variable para la puntuación
+
 
 // Este efecto se reinicia cada vez que 'sequenceKey' cambia y 'gameStarted' es true
     LaunchedEffect(sequenceKey, gameStarted) {
@@ -63,11 +64,13 @@ fun SimonSaysGame() {
         if (currentInput.isNotEmpty() && currentInput.size == sequence.size) {
             if (currentInput == sequence) {
                 gameMessage = "Correct! Keep going."
+                score++ // Incrementa la puntuación por secuencia correcta
                 delay(2000L) // Wait before starting the next sequence
                 currentInput = listOf()
                 sequenceKey++ // Incrementar la clave para forzar la recomposición y reiniciar la secuencia
             } else {
                 gameMessage = "Wrong sequence! Try again."
+                score = 0 // Reinicia la puntuación cuando el usuario se equivoca
                 delay(2000L)
                 gameStarted = false
                 sequence = listOf()
@@ -87,6 +90,7 @@ fun SimonSaysGame() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Text(text = "Score: $score", style = MaterialTheme.typography.headlineMedium) // Mostrar la puntuación
         Text(text = gameMessage, style = MaterialTheme.typography.bodyLarge)
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -108,7 +112,11 @@ fun SimonSaysGame() {
                             currentInput += index
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = if (isCurrent) color else color.copy(alpha = 0.3f)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isCurrent) color else color.copy(
+                            alpha = 0.3f
+                        )
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .padding(8.dp)
